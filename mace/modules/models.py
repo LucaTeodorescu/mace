@@ -482,7 +482,7 @@ class ScaleShiftMACE(MACE):
         )  # [n_graphs, num_heads]
 
         # Embeddings
-        node_feats = self.node_embedding(data["node_attrs"])
+        node_feats = self.node_embedding(data["node_attrs"])  ## our x
         edge_attrs = self.spherical_harmonics(vectors)
         edge_feats, cutoff = self.radial_embedding(
             lengths, data["node_attrs"], data["edge_index"], self.atomic_numbers
