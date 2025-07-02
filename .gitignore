@@ -35,6 +35,7 @@ dist/
 *.model
 /results
 *.db
+._*
 
 .benchmarks
 *.png
