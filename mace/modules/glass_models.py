@@ -14,16 +14,16 @@ from e3nn.util.jit import compile_mode
 from mace.tools.scatter import scatter_sum
 
 from .blocks import (
-    # AtomicEnergiesBlock,
+    AtomicEnergiesBlock,
     EquivariantProductBasisBlock,
     InteractionBlock,
-    # LinearDipoleReadoutBlock,
+    LinearDipoleReadoutBlock,
     LinearNodeEmbeddingBlock,
     LinearReadoutBlock,
-    # NonLinearDipoleReadoutBlock,
-    # NonLinearReadoutBlock,
+    NonLinearDipoleReadoutBlock,
+    NonLinearReadoutBlock,
     RadialEmbeddingBlock,
-    # ScaleShiftBlock,
+    ScaleShiftBlock,
 )
 from .utils import (
     compute_fixed_charge_dipole,
@@ -36,7 +36,30 @@ from .utils import (
 
 
 @compile_mode("script")
-class MinimalMACE(torch.nn.Module):
+class MinimalMACE_glass(torch.nn.Module):
+    """
+    Minimal MACE model for glass propensity prediction.
+    
+    This model is designed for predicting time-dependent propensity values
+    for glass systems with multiple particle types.
+    
+    Args:
+        r_max: Maximum interaction radius
+        num_bessel: Number of Bessel basis functions
+        num_polynomial_cutoff: Number of polynomial cutoff functions
+        max_ell: Maximum spherical harmonic degree
+        interaction_cls: Interaction block class for subsequent layers
+        interaction_cls_first: Interaction block class for first layer
+        num_interactions: Number of interaction blocks
+        num_elements: Number of particle types (default: 2 for binary system)
+        hidden_irreps: Hidden irreps for the model
+        MLP_irreps: MLP irreps (unused in this minimal version)
+        avg_num_neighbors: Average number of neighbors for normalization
+        correlation: Correlation order (body order)
+        gate: Activation function
+        radial_MLP: Radial MLP architecture
+        num_outputs: Number of time steps to predict (default: 10)
+    """
     def __init__(
         self,
         r_max: float,
@@ -46,16 +69,24 @@ class MinimalMACE(torch.nn.Module):
         interaction_cls: Type[InteractionBlock],
         interaction_cls_first: Type[InteractionBlock],
         num_interactions: int,
-        num_elements: int,  # (particle A and B)
-        hidden_irreps: o3.Irreps,
-        MLP_irreps: o3.Irreps,
-        avg_num_neighbors: float,
-        correlation: Union[int, List[int]],
-        gate: Optional[Callable],
+        num_elements: int = 2,  # Default for binary system
+        hidden_irreps: o3.Irreps = None,
+        MLP_irreps: o3.Irreps = None,  # Unused in minimal version
+        avg_num_neighbors: float = 50.0,
+        correlation: Union[int, List[int]] = 3,
+        gate: Optional[Callable] = None,
         radial_MLP: Optional[List[int]] = None,
-        num_outputs: int = 10,  # 10 time steps?
+        num_outputs: int = 10,  # 10 time steps
     ):
         super().__init__()
+        
+        # Validate inputs
+        if num_elements <= 0:
+            raise ValueError(f"num_elements must be positive, got {num_elements}")
+        if num_outputs <= 0:
+            raise ValueError(f"num_outputs must be positive, got {num_outputs}")
+        if r_max <= 0:
+            raise ValueError(f"r_max must be positive, got {r_max}")
 
         # Basic setup
         if isinstance(correlation, int):
@@ -64,6 +95,10 @@ class MinimalMACE(torch.nn.Module):
         # Embeddings
         node_attr_irreps = o3.Irreps([(num_elements, (0, 1))])
         node_feats_irreps = o3.Irreps([(hidden_irreps.count(o3.Irrep(0, 1)), (0, 1))])
+        
+        self.num_elements = num_elements
+        self.num_outputs = num_outputs
+        self.r_max = r_max
 
         self.node_embedding = LinearNodeEmbeddingBlock(
             irreps_in=node_attr_irreps, irreps_out=node_feats_irreps
@@ -87,7 +122,7 @@ class MinimalMACE(torch.nn.Module):
         interaction_irreps = (sh_irreps * num_features).sort()[0].simplify()
 
         if radial_MLP is None:
-            radial_MLP = [64, 64, 64]
+            radial_MLP = [32, 32,]
 
         # Build interactions and products
         self.interactions = torch.nn.ModuleList()
@@ -139,26 +174,51 @@ class MinimalMACE(torch.nn.Module):
             self.products.append(prod)
 
         # Readout
-        self.propensity_readout = LinearReadoutBlock(
+        
+        self.propensity_readouts = torch.nn.ModuleList()
+        
+        for idtype in range(num_elements):
+            self.propensity_readouts.append(LinearReadoutBlock(
             hidden_irreps,
             o3.Irreps(f"{num_outputs}x0e"),  # 10 scalar outputs per node
-        )
-
+            ))
+            
+        
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Forward pass of the model.
+        
+        Args:
+            data: Dictionary containing:
+                - pos_th: Atomic positions [n_atoms, 3]
+                - x: Node attributes (one-hot encoded) [n_atoms, num_elements]
+                - edge_index_th: Edge indices [2, n_edges]
+                - batch: Batch indices [n_atoms] (optional)
+                
+        Returns:
+            Dictionary containing:
+                - propensities: Predicted propensity values [n_atoms, num_outputs]
+                - node_feats: Final node features [n_atoms, hidden_dim]
+        """
         positions = data["pos_th"]
         node_attrs = data["x"]
         edge_index = data["edge_index_th"]
+        atom_types = torch.argmax(node_attrs, dim=1)
         batch = data.get("batch", torch.zeros(positions.shape[0], dtype=torch.long))
 
         # Compute edge vectors and lengths
-        edge_src, edge_dst = edge_index
-        vectors = positions[edge_dst] - positions[edge_src]  # Assuming no PBC for now
-        lengths = torch.linalg.norm(vectors, dim=1)
+    
+        with torch.no_grad():
+            edge_src, edge_dst = edge_index
+            vectors = positions[edge_dst] - positions[edge_src]
+            lengths = torch.linalg.norm(vectors, dim=1, keepdim=True)
 
         # Embeddings
         node_feats = self.node_embedding(node_attrs)
-        edge_attrs = self.spherical_harmonics(vectors)
-        edge_feats = self.radial_embedding(lengths)
+        
+        with torch.no_grad():
+            edge_attrs = self.spherical_harmonics(vectors)
+            edge_feats, cutoff = self.radial_embedding(lengths, node_attrs, edge_index, None)
 
         # Message passing
         for interaction, product in zip(self.interactions, self.products):
@@ -169,14 +229,21 @@ class MinimalMACE(torch.nn.Module):
                 edge_feats=edge_feats,
                 edge_index=edge_index,
             )
+            
             node_feats = product(
                 node_feats=node_feats,
                 sc=sc,
                 node_attrs=node_attrs,
             )
 
-        # Predict
-        propensities = self.propensity_readout(node_feats)  # [n_nodes, 10]
+        propensities = torch.zeros(node_feats.shape[0], self.num_outputs, device=node_feats.device)
+        
+        for element_type in range(self.num_elements):
+            mask = (atom_types == element_type)
+            
+            if mask.sum() > 0:  # If there are atoms of this type
+                element_propensities = self.propensity_readouts[element_type](node_feats[mask])
+                propensities[mask] = element_propensities
 
         return {
             "propensities": propensities,

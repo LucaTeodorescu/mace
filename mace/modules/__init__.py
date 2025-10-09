@@ -33,6 +33,7 @@ from .loss import (
     WeightedHuberEnergyForcesStressLoss,
 )
 from .models import MACE, AtomicDipolesMACE, EnergyDipolesMACE, ScaleShiftMACE
+from .glass_models import MinimalMACE_glass
 from .radial import BesselBasis, GaussianBasis, PolynomialCutoff, ZBLBasis
 from .symmetric_contraction import SymmetricContraction
 from .utils import (
@@ -89,6 +90,7 @@ __all__ = [
     "PolynomialCutoff",
     "BesselBasis",
     "GaussianBasis",
+    "MinimalMACE_glass",
     "MACE",
     "ScaleShiftMACE",
     "AtomicDipolesMACE",
