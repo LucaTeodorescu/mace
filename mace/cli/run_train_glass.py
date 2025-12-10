@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument('--hidden_irreps', type=str, default="16x0e + 16x1o + 16x1e", help='Hidden irreps string')
     parser.add_argument('--correlation', type=int, default=3, help='Body order (nu)')
     parser.add_argument('--num_elements', type=int, default=2, help='Number of element types')
+    parser.add_argument('--interaction_type', type=str, default="LucaInteractionBlock", help='Interaction block type')
     
     # Training parameters
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
@@ -52,6 +53,7 @@ def parse_args():
     parser.add_argument('--results_dir', type=str, default="experiments", help='Results directory')
     
     # Scheduler parameters
+    parser.add_argument('--scheduler_type', type=str, default="None", help='LR scheduler type (ReduceLROnPlateau or None)')
     parser.add_argument('--scheduler_factor', type=float, default=0.5, help='LR scheduler factor')
     parser.add_argument('--scheduler_patience', type=int, default=20, help='LR scheduler patience')
     parser.add_argument('--min_lr', type=float, default=1e-6, help='Minimum learning rate')
@@ -112,7 +114,7 @@ def main():
             "num_workers": num_workers,
         },
         "scheduler_params": {
-            "type": "ReduceLROnPlateau",
+            "type": args.scheduler_type,
             "factor": args.scheduler_factor,
             "patience": args.scheduler_patience,
             "min_lr": args.min_lr,
@@ -132,13 +134,14 @@ def main():
     logging.info(f"Experiment config saved to {config_file}")
     
     logging.info("Loading training data...")
-    train_data, _, _ = load_multiple_shiba_datasets(
+    train_data, train_target_means, train_target_stds = load_multiple_shiba_datasets(
         data_dir, "isoconfig_N4096T0.44", train_file_numbers, normalize=True, experiment_name=experiment_name, folder_path=folder_path
     )
     
     logging.info("Loading validation data...")
     valid_data, _, _ = load_multiple_shiba_datasets(
-        data_dir, "isoconfig_N4096T0.44", test_file_numbers, normalize=True, experiment_name=experiment_name, folder_path=folder_path
+        data_dir, "isoconfig_N4096T0.44", test_file_numbers, normalize=True, experiment_name=experiment_name, folder_path=folder_path,
+        target_means=train_target_means, target_stds=train_target_stds
     )
     logging.info(f"Training on {len(train_data)} files, validating on {len(valid_data)} files")
 
@@ -173,8 +176,8 @@ def main():
         num_bessel=num_bessel,
         num_polynomial_cutoff=num_polynomial_cutoff,
         max_ell=max_ell,
-        interaction_cls=modules.interaction_classes["RealAgnosticResidualInteractionBlock"],
-        interaction_cls_first=modules.interaction_classes["RealAgnosticResidualInteractionBlock"],
+        interaction_cls=modules.interaction_classes[args.interaction_type],
+        interaction_cls_first=modules.interaction_classes[args.interaction_type],
         num_interactions=num_interactions,
         num_elements=num_elements,
         hidden_irreps=hidden_irreps,
@@ -188,7 +191,11 @@ def main():
     logging.info(f"Total parameters: {sum(p.numel() for p in model.parameters())}")
     
     optimizer = Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience)
+    if args.scheduler_type == "ReduceLROnPlateau":
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience)
+    else:
+        scheduler = None
+        
     loss_fn = torch.nn.MSELoss()
     
     best_valid_loss = float('inf')
@@ -266,10 +273,13 @@ def main():
         
         avg_valid_loss = valid_loss / len(valid_loader)
         
-        scheduler.step(avg_valid_loss)
-        
-        # Get current learning rate from scheduler
-        current_lr = scheduler.optimizer.param_groups[0]['lr']
+        if scheduler is not None:
+            scheduler.step(avg_valid_loss)
+            
+            # Get current learning rate from scheduler
+            current_lr = scheduler.optimizer.param_groups[0]['lr']
+        else:
+            current_lr = lr
         
         valid_pred_concat = torch.cat(valid_predictions, dim=0)
         valid_target_concat = torch.cat(valid_targets, dim=0)
@@ -396,8 +406,20 @@ def load_shiba_dataset(file_path):
     
     return data_list
 
-def load_multiple_shiba_datasets(data_dir, pattern, file_numbers, normalize=True, stats_file=None, experiment_name="propensity_train", folder_path="results"):
-    """Load multiple .pt files and combine them with per-particle-type normalization"""
+def load_multiple_shiba_datasets(data_dir, pattern, file_numbers, normalize=True, stats_file=None, experiment_name="propensity_train", folder_path="results", target_means=None, target_stds=None):
+    """Load multiple .pt files and combine them with per-particle-type normalization
+    
+    Args:
+        data_dir: Directory containing the data files
+        pattern: File pattern to match
+        file_numbers: List of file numbers to load
+        normalize: Whether to apply normalization
+        stats_file: Path to save/load statistics file
+        experiment_name: Name for the experiment
+        folder_path: Path to save results
+        target_means: Pre-computed target means (if None, will compute from data)
+        target_stds: Pre-computed target stds (if None, will compute from data)
+    """
     import glob
     from torch_geometric.data import Data
     import torch.nn.functional as F
@@ -433,51 +455,61 @@ def load_multiple_shiba_datasets(data_dir, pattern, file_numbers, normalize=True
         all_node_attrs.append(node_attrs)
     
     if normalize:
-        # Concatenate all data
-        all_targets_tensor = torch.cat(all_targets, dim=0)  # [total_nodes, 10]
-        all_node_attrs_tensor = torch.cat(all_node_attrs, dim=0)  # [total_nodes, 2]
-        
-        # Get particle types (0 for type A, 1 for type B)
-        particle_types = torch.argmax(all_node_attrs_tensor, dim=1)  # [total_nodes]
-        
-        # Compute per-particle-type statistics
-        target_means = {}
-        target_stds = {}
-        
-        for particle_type in range(2):  # 0 and 1 for binary system
-            mask = (particle_types == particle_type)
-            if mask.sum() > 0:  # If there are particles of this type
-                type_targets = all_targets_tensor[mask]  # [n_type_particles, 10]
-                
-                target_mean = torch.mean(type_targets, dim=0)  # Mean for each time step
-                target_std = torch.std(type_targets, dim=0)   # Std for each time step
-                
-                # Avoid division by zero
-                target_std = torch.where(target_std < 1e-8, torch.ones_like(target_std), target_std)
-                
-                target_means[particle_type] = target_mean
-                target_stds[particle_type] = target_std
-                
-                print(f"Particle type {particle_type} - Target mean: {target_mean}")
-                print(f"Particle type {particle_type} - Target std: {target_std}")
-                print(f"Particle type {particle_type} - Number of particles: {mask.sum()}")
-        
-        # Save statistics for later use
-        if stats_file is None:
-            timestamp = datetime.now().strftime("%Y%m%d")
-            stats_file = f"{folder_path}/target_statistics_per_particle_{timestamp}_{experiment_name}.json"
-        
-        os.makedirs(os.path.dirname(stats_file), exist_ok=True)
-        stats = {
-            "target_means": {str(k): v.tolist() for k, v in target_means.items()},
-            "target_stds": {str(k): v.tolist() for k, v in target_stds.items()},
-            "num_samples": len(all_data),
-            "particle_type_counts": {str(k): int((particle_types == k).sum()) for k in range(2)}
-        }
-        
-        with open(stats_file, 'w') as f:
-            json.dump(stats, f, indent=2)
-        print(f"Saved per-particle normalization statistics to {stats_file}")
+        # If pre-computed statistics are provided, use them
+        if target_means is not None and target_stds is not None:
+            print("Using pre-computed normalization statistics")
+            for particle_type in range(2):
+                if particle_type in target_means:
+                    print(f"Particle type {particle_type} - Using pre-computed mean: {target_means[particle_type]}")
+                    print(f"Particle type {particle_type} - Using pre-computed std: {target_stds[particle_type]}")
+        else:
+            # Compute statistics from current data (should only be done for training data)
+            print("Computing normalization statistics from current data")
+            # Concatenate all data
+            all_targets_tensor = torch.cat(all_targets, dim=0)  # [total_nodes, 10]
+            all_node_attrs_tensor = torch.cat(all_node_attrs, dim=0)  # [total_nodes, 2]
+            
+            # Get particle types (0 for type A, 1 for type B)
+            particle_types = torch.argmax(all_node_attrs_tensor, dim=1)  # [total_nodes]
+            
+            # Compute per-particle-type statistics
+            target_means = {}
+            target_stds = {}
+            
+            for particle_type in range(2):  # 0 and 1 for binary system
+                mask = (particle_types == particle_type)
+                if mask.sum() > 0:  # If there are particles of this type
+                    type_targets = all_targets_tensor[mask]  # [n_type_particles, 10]
+                    
+                    target_mean = torch.mean(type_targets, dim=0)  # Mean for each time step
+                    target_std = torch.std(type_targets, dim=0)   # Std for each time step
+                    
+                    # Avoid division by zero
+                    target_std = torch.where(target_std < 1e-8, torch.ones_like(target_std), target_std)
+                    
+                    target_means[particle_type] = target_mean
+                    target_stds[particle_type] = target_std
+                    
+                    print(f"Particle type {particle_type} - Target mean: {target_mean}")
+                    print(f"Particle type {particle_type} - Target std: {target_std}")
+                    print(f"Particle type {particle_type} - Number of particles: {mask.sum()}")
+            
+            # Save statistics for later use
+            if stats_file is None:
+                timestamp = datetime.now().strftime("%Y%m%d")
+                stats_file = f"{folder_path}/target_statistics_per_particle_{timestamp}_{experiment_name}.json"
+            
+            os.makedirs(os.path.dirname(stats_file), exist_ok=True)
+            stats = {
+                "target_means": {str(k): v.tolist() for k, v in target_means.items()},
+                "target_stds": {str(k): v.tolist() for k, v in target_stds.items()},
+                "num_samples": len(all_data),
+                "particle_type_counts": {str(k): int((particle_types == k).sum()) for k in range(2)}
+            }
+            
+            with open(stats_file, 'w') as f:
+                json.dump(stats, f, indent=2)
+            print(f"Saved per-particle normalization statistics to {stats_file}")
         
         # Apply per-particle-type normalization to all data
         for data in all_data:
