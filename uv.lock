@@ -1130,7 +1130,7 @@ requires-dist = [
     { name = "python-hostlist" },
     { name = "pyyaml" },
     { name = "schedulefree", marker = "extra == 'schedulefree'" },
-    { name = "torch", specifier = "==1.12" },
+    { name = "torch", specifier = ">=1.12" },
     { name = "torch-ema" },
     { name = "torchmetrics" },
     { name = "tqdm" },
