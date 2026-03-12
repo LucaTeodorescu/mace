@@ -10,7 +10,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "torch>=1.12",
+    "torch<2.5",
     "e3nn==0.4.4",
     "numpy",
     "opt_einsum",
@@ -67,6 +67,9 @@ Homepage = "https://github.com/ACEsuit/mace"
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mace*"]
 
 # Make isort compatible with black
 [tool.isort]
