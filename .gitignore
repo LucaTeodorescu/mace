@@ -38,7 +38,7 @@ dist/
 ._*
 .ruff_cache
 /models
-.*
+.*/
 
 .benchmarks
 *.png
