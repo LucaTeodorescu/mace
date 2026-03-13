@@ -19,5 +19,6 @@ account: null
 array_parallelism: 10
 
 setup:
-  - "source /mnt/beegfs/home/teodorescu/gnn4glasses/mace/.venv/bin/activate"
+  - "cd ~/project/mace"
+  - "source ~/project/mace/.venv/bin/activate"
   - "export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK"

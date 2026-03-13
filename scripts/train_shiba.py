@@ -14,14 +14,14 @@ import torch.nn.functional as F
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from scipy.stats import pearsonr
-from torch.optim.lr_scheduler import MultiStepLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 from e3nn import o3
 
 from mace import modules
 from mace.modules.glass_models import MinimalMACE_glass
-from mace.tools import MetricsLogger
+
 
 OmegaConf.register_new_resolver(
     "join", lambda lst, sep="-": sep.join(str(x) for x in lst)
@@ -55,6 +55,8 @@ def build_model(model_cfg, device):
         gate=torch.nn.functional.silu,
         radial_MLP=list(model_cfg.radial_MLP),
         num_outputs=model_cfg.num_outputs,
+        batchnorm=model_cfg.get("batchnorm", False),
+        bn_momentum=model_cfg.get("bn_momentum", 0.5),
     ).to(device)
 
     return model
@@ -272,7 +274,8 @@ def train(cfg):
 
     # ---- Model ----
     model = build_model(cfg.model, device)
-    logging.info(f"Model: {cfg.model.interaction_type} | Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    logging.info(f"Model: {cfg.model.interaction_type} | BN: {cfg.model.get('batchnorm', False)} | "
+                 f"Params: {sum(p.numel() for p in model.parameters()):,}")
 
     # ---- Hydra output directory ----
     exp_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
