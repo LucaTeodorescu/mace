@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch
+from e3nn import nn as e3nn_nn
 from e3nn import o3
 from e3nn.util.jit import compile_mode
 
@@ -77,6 +78,8 @@ class MinimalMACE_glass(torch.nn.Module):
         gate: Optional[Callable] = None,
         radial_MLP: Optional[List[int]] = None,
         num_outputs: int = 10,  # 10 time steps
+        batchnorm: bool = False,
+        bn_momentum: float = 0.5,
     ):
         super().__init__()
         
@@ -173,8 +176,22 @@ class MinimalMACE_glass(torch.nn.Module):
             )
             self.products.append(prod)
 
+        # Optional BatchNorm before each interaction block
+        self.use_batchnorm = batchnorm
+        self.layer_norms = torch.nn.ModuleList()
+        if batchnorm:
+            # First interaction takes node_feats_irreps (scalars only)
+            self.layer_norms.append(
+                e3nn_nn.BatchNorm(node_feats_irreps, momentum=bn_momentum)
+            )
+            # Subsequent interactions take hidden_irreps (after product output)
+            for _ in range(1, num_interactions):
+                self.layer_norms.append(
+                    e3nn_nn.BatchNorm(hidden_irreps, momentum=bn_momentum)
+                )
+
         # Readout
-        
+
         self.propensity_readouts = torch.nn.ModuleList()
         
         for idtype in range(num_elements):
@@ -221,7 +238,11 @@ class MinimalMACE_glass(torch.nn.Module):
             edge_feats, cutoff = self.radial_embedding(lengths, node_attrs, edge_index, None)
 
         # Message passing
-        for interaction, product in zip(self.interactions, self.products):
+        layers = zip(self.interactions, self.products)
+        for i, (interaction, product) in enumerate(layers):
+            if self.use_batchnorm:
+                node_feats = self.layer_norms[i](node_feats)
+
             node_feats, sc = interaction(
                 node_attrs=node_attrs,
                 node_feats=node_feats,
@@ -229,7 +250,7 @@ class MinimalMACE_glass(torch.nn.Module):
                 edge_feats=edge_feats,
                 edge_index=edge_index,
             )
-            
+
             node_feats = product(
                 node_feats=node_feats,
                 sc=sc,
