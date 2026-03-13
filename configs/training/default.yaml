@@ -1,0 +1,10 @@
+seed: 1738
+batch_size: 8
+epochs: 400
+lr: 1e-2
+num_workers: 8
+grad_clip: 10.0
+scheduler_type: ReduceLROnPlateau
+scheduler_factor: 0.5
+scheduler_patience: 20
+min_lr: 1e-6

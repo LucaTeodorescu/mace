@@ -1,0 +1,14 @@
+defaults:
+  - model: mace_glass
+  - data: shiba
+  - training: default
+
+experiment:
+  name: ${model.model_type}_${model.interaction_type}_t${join:${data.time_indices},-}
+
+wandb:
+  entity: luac-inria
+  project: MACE
+  enabled: true
+  debug: false
+  group: no-group

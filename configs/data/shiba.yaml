@@ -1,0 +1,11 @@
+dataset_type: shiba
+root: ./data/T_044/processed
+pattern: "isoconfig_N4096T0.44"
+n_train: 400
+train_start: 1
+train_end: 401
+test_start: 401
+test_end: 501
+r_max: 2.0
+time_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+normalize: true

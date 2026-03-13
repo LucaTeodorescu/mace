@@ -1,0 +1,23 @@
+# @package hydra.launcher
+
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+
+submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+name: ${hydra.job.name}
+
+timeout_min: 1439 # 23:59
+nodes: 1
+tasks_per_node: 1
+cpus_per_task: 9
+mem_gb: 32
+gres: "gpu:1"
+
+partition: null
+qos: null
+account: null
+
+array_parallelism: 10
+
+setup:
+  - "source /mnt/beegfs/home/teodorescu/gnn4glasses/mace/.venv/bin/activate"
+  - "export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK"

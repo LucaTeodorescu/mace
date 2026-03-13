@@ -1,0 +1,13 @@
+# Standard MACE for molecular/materials benchmarks (energy + forces)
+model_type: mace_standard
+r_max: 5.0
+num_bessel: 8
+num_polynomial_cutoff: 5
+max_ell: 3
+num_interactions: 2
+hidden_irreps: "128x0e + 128x1o"
+correlation: 3
+interaction_type: RealAgnosticResidualInteractionBlock
+radial_MLP: [64, 64, 64]
+# ScaleShiftMACE is the standard for molecular training
+model_class: ScaleShiftMACE

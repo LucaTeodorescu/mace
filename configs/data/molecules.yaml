@@ -1,0 +1,10 @@
+# Standard MACE molecular training data
+# For reproducing results, use rMD17 or 3BPA datasets
+# Download rMD17: https://figshare.com/articles/dataset/Revised_MD17_dataset_rMD17/12672038
+# Download 3BPA: https://github.com/dkhan42/3BPA
+dataset_type: molecules
+train_file: null  # Override via CLI: data.train_file=path/to/train.xyz
+valid_fraction: 0.05
+test_file: null   # Override via CLI: data.test_file=path/to/test.xyz
+E0s: average
+r_max: 5.0
