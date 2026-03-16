@@ -4,7 +4,7 @@ defaults:
   - training: default
 
 experiment:
-  name: ${model}
+  name: ${model.model_type}
 
 wandb:
   entity: luac-inria
