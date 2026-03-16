@@ -4,11 +4,11 @@ defaults:
   - training: default
 
 experiment:
-  name: ${model.model_type}_${model.interaction_type}_t${join:${data.time_indices},-}
+  name: ${model}
 
 wandb:
   entity: luac-inria
   project: MACE
   enabled: true
   debug: false
-  group: no-group
+  group: results

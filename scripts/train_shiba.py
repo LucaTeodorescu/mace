@@ -171,7 +171,7 @@ def save_and_plot_metrics(metrics_history, epoch, save_dir, time_steps, experime
     timestep = "t_6" if 6 in time_steps else f"t_{time_steps[0]}"
 
     # Plot 1: loss + correlation over epochs
-    fig, ax1 = plt.subplots(figsize=(12, 8))
+    fig, ax1 = plt.subplots(figsize=(4, 3))
     ax1.plot(epochs, metrics_history["train_correlations_A"][timestep], color="blue",
              linestyle="-", label=f"Train Corr ({timestep})", alpha=0.8, linewidth=2)
     ax1.plot(epochs, metrics_history["test_correlations_A"][timestep], color="blue",
@@ -201,7 +201,7 @@ def save_and_plot_metrics(metrics_history, epoch, save_dir, time_steps, experime
     plt.close()
 
     # Plot 2: correlation across time steps
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(4, 3))
     train_corrs = [metrics_history["train_correlations_A"][f"t_{t}"][-1] for t in time_steps]
     test_corrs = [metrics_history["test_correlations_A"][f"t_{t}"][-1] for t in time_steps]
     ax.plot(time_steps, train_corrs, "o-", color="steelblue", linewidth=2, markersize=8, label="Train", alpha=0.8)
