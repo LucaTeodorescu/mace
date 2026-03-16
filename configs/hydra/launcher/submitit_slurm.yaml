@@ -5,7 +5,6 @@ _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 submitit_folder: ${hydra.sweep.dir}/.submitit/%j
 name: ${hydra.job.name}
 
-partition: tau
 timeout_min: 1439 # 23:59
 nodes: 1
 tasks_per_node: 1
@@ -13,7 +12,7 @@ cpus_per_task: 9
 mem_gb: 32
 gres: "gpu:1"
 
-partition: null
+partition: tau
 qos: null
 account: null
 
