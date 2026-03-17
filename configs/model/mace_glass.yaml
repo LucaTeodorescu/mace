@@ -2,13 +2,13 @@ model_type: mace_glass
 r_max: 2.0
 num_bessel: 10
 num_polynomial_cutoff: 2
-max_ell: 2
+max_ell: 3
 num_interactions: 6
-hidden_irreps: "16x0e + 16x1o + 16x1e"
+hidden_irreps: "16x0e + 16x1o + 16x1e + 16x2e"
 correlation: 3
 num_elements: 2
 interaction_type: RealAgnosticResidualInteractionBlock
-avg_num_neighbors: 50
+avg_num_neighbors: 
 radial_MLP: [16]
 num_outputs: 10
 batchnorm: true
