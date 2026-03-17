@@ -13,3 +13,4 @@ radial_MLP: [16]
 num_outputs: 10
 batchnorm: false
 bn_momentum: 0.5
+dropout_p: 0.0

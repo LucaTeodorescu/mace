@@ -80,6 +80,7 @@ class MinimalMACE_glass(torch.nn.Module):
         num_outputs: int = 10,  # 10 time steps
         batchnorm: bool = False,
         bn_momentum: float = 0.5,
+        dropout_p: float = 0.0,
     ):
         super().__init__()
         
@@ -141,6 +142,7 @@ class MinimalMACE_glass(torch.nn.Module):
             hidden_irreps=hidden_irreps,
             avg_num_neighbors=avg_num_neighbors,
             radial_MLP=radial_MLP,
+            dropout_p=dropout_p,
         )
         self.interactions.append(inter)
 
@@ -164,6 +166,7 @@ class MinimalMACE_glass(torch.nn.Module):
                 hidden_irreps=hidden_irreps,
                 avg_num_neighbors=avg_num_neighbors,
                 radial_MLP=radial_MLP,
+                dropout_p=dropout_p,
             )
             self.interactions.append(inter)
 

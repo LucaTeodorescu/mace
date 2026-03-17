@@ -369,6 +369,65 @@ class EquivariantProductBasisBlock(torch.nn.Module):
         return self.linear(node_feats)
 
 
+class _FCNLayerWithDropout(torch.nn.Module):
+    """Single layer of FullyConnectedNet with optional dropout.
+
+    Mirrors e3nn's _Layer (analytical variance scaling via normalize2mom)
+    but adds dropout after the activation.
+    """
+
+    def __init__(self, h_in, h_out, act, var_in, var_out, dropout_p=0.0):
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(h_in, h_out))
+        self.act = act
+        self.dropout = torch.nn.Dropout(dropout_p) if dropout_p > 0.0 else None
+        self.h_in = h_in
+        self.var_in = var_in
+        self.var_out = var_out
+
+    def forward(self, x: torch.Tensor):
+        if self.act is not None:
+            w = self.weight / (self.h_in * self.var_in) ** 0.5
+            x = x @ w
+            x = self.act(x)
+            x = x * self.var_out**0.5
+            if self.dropout is not None:
+                x = self.dropout(x)
+        else:
+            w = self.weight / (self.h_in * self.var_in / self.var_out) ** 0.5
+            x = x @ w
+        return x
+
+
+def _build_radial_mlp(
+    channel_list: List[int],
+    gate: Callable = torch.nn.functional.silu,
+    dropout_p: float = 0.0,
+) -> torch.nn.Module:
+    """Build a radial MLP with optional dropout.
+
+    When dropout_p == 0 falls back to e3nn's FullyConnectedNet (no overhead).
+    When dropout_p > 0 builds an equivalent network (same analytical variance
+    scaling via normalize2mom) but with dropout after each hidden activation.
+    """
+    if dropout_p <= 0.0:
+        return nn.FullyConnectedNet(channel_list, gate)
+
+    from e3nn.nn._fc import normalize2mom
+    act = normalize2mom(gate) if gate is not None else None
+    var_in = 1.0
+    net = torch.nn.Sequential()
+    for i, (h1, h2) in enumerate(zip(channel_list[:-1], channel_list[1:])):
+        if i == len(channel_list) - 2:
+            # output layer: no activation, no dropout
+            layer = _FCNLayerWithDropout(h1, h2, act=None, var_in=var_in, var_out=1.0)
+        else:
+            layer = _FCNLayerWithDropout(h1, h2, act=act, var_in=var_in, var_out=1.0, dropout_p=dropout_p)
+        net.add_module(f"layer{i}", layer)
+        var_in = 1.0
+    return net
+
+
 @compile_mode("script")
 class InteractionBlock(torch.nn.Module):
     def __init__(
@@ -384,6 +443,7 @@ class InteractionBlock(torch.nn.Module):
         radial_MLP: Optional[List[int]] = None,
         cueq_config: Optional[CuEquivarianceConfig] = None,
         oeq_config: Optional[OEQConfig] = None,
+        dropout_p: float = 0.0,
     ) -> None:
         super().__init__()
         self.node_attrs_irreps = node_attrs_irreps
@@ -401,6 +461,7 @@ class InteractionBlock(torch.nn.Module):
         self.edge_irreps = edge_irreps
         self.cueq_config = cueq_config
         self.oeq_config = oeq_config
+        self.dropout_p = dropout_p
         if self.oeq_config and self.oeq_config.conv_fusion:
             self.conv_fusion = self.oeq_config.conv_fusion
         if self.cueq_config and self.cueq_config.conv_fusion:
@@ -486,9 +547,10 @@ class RealAgnosticInteractionBlock(InteractionBlock):
 
         # Convolution weights
         input_dim = self.edge_feats_irreps.num_irreps
-        self.conv_tp_weights = nn.FullyConnectedNet(
+        self.conv_tp_weights = _build_radial_mlp(
             [input_dim] + self.radial_MLP + [self.conv_tp.weight_numel],
-            torch.nn.functional.silu,
+            gate=torch.nn.functional.silu,
+            dropout_p=self.dropout_p,
         )
 
         # Linear
@@ -589,9 +651,10 @@ class RealAgnosticResidualInteractionBlock(InteractionBlock):
 
         # Convolution weights
         input_dim = self.edge_feats_irreps.num_irreps
-        self.conv_tp_weights = nn.FullyConnectedNet(
+        self.conv_tp_weights = _build_radial_mlp(
             [input_dim] + self.radial_MLP + [self.conv_tp.weight_numel],
-            torch.nn.functional.silu,  # gate
+            gate=torch.nn.functional.silu,
+            dropout_p=self.dropout_p,
         )
 
         # Linear
