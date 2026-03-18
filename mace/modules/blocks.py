@@ -369,33 +369,22 @@ class EquivariantProductBasisBlock(torch.nn.Module):
         return self.linear(node_feats)
 
 
-class _FCNLayerWithDropout(torch.nn.Module):
-    """Single layer of FullyConnectedNet with optional dropout.
+class _FullyConnectedNetWithDropout(torch.nn.Module):
+    """Wraps e3nn's FullyConnectedNet, inserting dropout after each hidden layer."""
 
-    Mirrors e3nn's _Layer (analytical variance scaling via normalize2mom)
-    but adds dropout after the activation.
-    """
-
-    def __init__(self, h_in, h_out, act, var_in, var_out, dropout_p=0.0):
+    def __init__(self, channel_list, gate, dropout_p):
         super().__init__()
-        self.weight = torch.nn.Parameter(torch.randn(h_in, h_out))
-        self.act = act
-        self.dropout = torch.nn.Dropout(dropout_p) if dropout_p > 0.0 else None
-        self.h_in = h_in
-        self.var_in = var_in
-        self.var_out = var_out
+        self.fcn = nn.FullyConnectedNet(channel_list, gate)
+        self.dropouts = torch.nn.ModuleList()
+        # One dropout per hidden layer (all layers except the last)
+        for i in range(len(channel_list) - 2):
+            self.dropouts.append(torch.nn.Dropout(dropout_p))
 
-    def forward(self, x: torch.Tensor):
-        if self.act is not None:
-            w = self.weight / (self.h_in * self.var_in) ** 0.5
-            x = x @ w
-            x = self.act(x)
-            x = x * self.var_out**0.5
-            if self.dropout is not None:
-                x = self.dropout(x)
-        else:
-            w = self.weight / (self.h_in * self.var_in / self.var_out) ** 0.5
-            x = x @ w
+    def forward(self, x):
+        for i, layer in enumerate(self.fcn):
+            x = layer(x)
+            if i < len(self.dropouts):
+                x = self.dropouts[i](x)
         return x
 
 
@@ -406,26 +395,12 @@ def _build_radial_mlp(
 ) -> torch.nn.Module:
     """Build a radial MLP with optional dropout.
 
-    When dropout_p == 0 falls back to e3nn's FullyConnectedNet (no overhead).
-    When dropout_p > 0 builds an equivalent network (same analytical variance
-    scaling via normalize2mom) but with dropout after each hidden activation.
+    When dropout_p == 0 returns e3nn's FullyConnectedNet unchanged.
+    When dropout_p > 0 wraps it with dropout after each hidden activation.
     """
     if dropout_p <= 0.0:
         return nn.FullyConnectedNet(channel_list, gate)
-
-    from e3nn.nn._fc import normalize2mom
-    act = normalize2mom(gate) if gate is not None else None
-    var_in = 1.0
-    net = torch.nn.Sequential()
-    for i, (h1, h2) in enumerate(zip(channel_list[:-1], channel_list[1:])):
-        if i == len(channel_list) - 2:
-            # output layer: no activation, no dropout
-            layer = _FCNLayerWithDropout(h1, h2, act=None, var_in=var_in, var_out=1.0)
-        else:
-            layer = _FCNLayerWithDropout(h1, h2, act=act, var_in=var_in, var_out=1.0, dropout_p=dropout_p)
-        net.add_module(f"layer{i}", layer)
-        var_in = 1.0
-    return net
+    return _FullyConnectedNetWithDropout(channel_list, gate, dropout_p)
 
 
 @compile_mode("script")
