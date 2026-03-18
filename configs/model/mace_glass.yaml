@@ -8,7 +8,7 @@ hidden_irreps: "16x0e + 16x1o + 16x1e + 16x2e"
 correlation: 3
 num_elements: 2
 interaction_type: RealAgnosticResidualInteractionBlock
-avg_num_neighbors: 
+avg_num_neighbors: 20.321
 radial_MLP: [16]
 num_outputs: 10
 batchnorm: true
