@@ -774,8 +774,9 @@ def get_params_options(
 def get_optimizer(
     args: argparse.Namespace, param_options: Dict[str, Any]
 ) -> torch.optim.Optimizer:
+    use_capturable = param_options.get("amsgrad", False) and args.device == "cuda"
     if args.optimizer == "adamw":
-        optimizer = torch.optim.AdamW(**param_options)
+        optimizer = torch.optim.AdamW(**param_options, capturable=use_capturable)
     elif args.optimizer == "schedulefree":
         try:
             from schedulefree import adamw_schedulefree
@@ -786,7 +787,7 @@ def get_optimizer(
         _param_options = {k: v for k, v in param_options.items() if k != "amsgrad"}
         optimizer = adamw_schedulefree.AdamWScheduleFree(**_param_options)
     else:
-        optimizer = torch.optim.Adam(**param_options)
+        optimizer = torch.optim.Adam(**param_options, capturable=use_capturable)
     return optimizer
 
 
