@@ -205,6 +205,16 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
             f"--swa_energy_weight={energy_weight}.0",
         ])
 
+    # WandB
+    wandb_cfg = cfg.get("wandb", {})
+    if wandb_cfg.get("enabled", False):
+        cmd.append("--wandb")
+        if wandb_cfg.get("entity"):
+            cmd.append(f"--wandb_entity={wandb_cfg.entity}")
+        if wandb_cfg.get("project"):
+            cmd.append(f"--wandb_project={wandb_cfg.project}")
+        cmd.append(f"--wandb_name={cfg.experiment.name}")
+
     # Output
     cmd.extend([
         "--error_table=TotalMAE",
