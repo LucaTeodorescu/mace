@@ -174,7 +174,7 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
         f"--interaction={model.interaction_type}",
         f"--num_interactions={model.num_interactions}",
         f"--max_ell={model.max_ell}",
-        f"--hidden_irreps={model.hidden_irreps}",
+        f"--hidden_irreps={str(model.hidden_irreps).replace(' ', '')}",
         f"--num_cutoff_basis={model.num_cutoff_basis}",
         f"--correlation={model.correlation}",
         f"--r_max={model.r_max}",
@@ -241,7 +241,16 @@ def main(cfg: DictConfig):
     cmd = build_mace_command(cfg, train_file, test_file)
     log.info("Command:\n  %s", " ".join(cmd))
 
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.stdout:
+        log.info("mace_run_train stdout:\n%s", result.stdout)
+    if result.stderr:
+        log.error("mace_run_train stderr:\n%s", result.stderr)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"mace_run_train failed (exit code {result.returncode}).\n"
+            f"stderr: {result.stderr[-2000:] if result.stderr else '(empty)'}"
+        )
 
 
 if __name__ == "__main__":
