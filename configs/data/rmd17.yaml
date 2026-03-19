@@ -1,0 +1,4 @@
+dataset_type: rmd17
+root: ./data/rmd17
+molecule: ethanol
+split: 1
