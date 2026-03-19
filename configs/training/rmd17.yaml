@@ -1,0 +1,19 @@
+# MACE rMD17 paper training settings
+seed: 3
+batch_size: 5
+epochs: 3500
+lr: 0.01
+patience: 200
+weight_decay: 5e-7
+grad_clip: 10
+# EMA
+ema: true
+ema_decay: 0.99
+amsgrad: true
+# SWA
+swa: true
+swa_start: 2000
+swa_lr: 0.001
+# Loss weights (energy_weight is set per-molecule = num_atoms)
+forces_weight: 1000.0
+swa_forces_weight: 1000.0

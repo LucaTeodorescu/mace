@@ -1,0 +1,14 @@
+defaults:
+  - model: mace_rmd17
+  - data: rmd17
+  - training: rmd17
+
+experiment:
+  name: rmd17_${data.molecule}_split${data.split}
+
+wandb:
+  entity: luac-inria
+  project: MACE
+  enabled: true
+  debug: false
+  group: rmd17
