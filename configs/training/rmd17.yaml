@@ -17,3 +17,4 @@ swa_lr: 0.001
 # Loss weights (energy_weight is set per-molecule = num_atoms)
 forces_weight: 1000.0
 swa_forces_weight: 1000.0
+device: cuda

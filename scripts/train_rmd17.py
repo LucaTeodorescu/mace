@@ -209,7 +209,7 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
     cmd.extend([
         "--error_table=TotalMAE",
         "--default_dtype=float32",
-        f"--device=cuda",
+        f"--device={training.device}",
         f"--seed={training.seed}",
         f"--work_dir={out_dir}",
         "--restart_latest",

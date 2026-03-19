@@ -15,6 +15,7 @@ gres: "gpu:1"
 partition: tau
 qos: null
 account: null
+exclude: "margpu021"
 
 array_parallelism: 10
 
