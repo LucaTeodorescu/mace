@@ -218,6 +218,8 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
             cmd.append(f"--wandb_entity={wandb_cfg.entity}")
         if wandb_cfg.get("project"):
             cmd.append(f"--wandb_project={wandb_cfg.project}")
+        if wandb_cfg.get("group"):
+            cmd.append(f"--wandb_project={wandb_cfg.group}")
         cmd.append(f"--wandb_name={cfg.experiment.name}")
 
     # Output
