@@ -205,6 +205,11 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
             f"--swa_energy_weight={energy_weight}.0",
         ])
 
+    # BatchNorm
+    if model.get("batchnorm", False):
+        cmd.append("--batchnorm")
+        cmd.append(f"--bn_momentum={model.get('bn_momentum', 0.5)}")
+
     # WandB
     wandb_cfg = cfg.get("wandb", {})
     if wandb_cfg.get("enabled", False):

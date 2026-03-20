@@ -230,6 +230,8 @@ def _build_model(
             radial_type=args.radial_type,
             heads=heads,
             embedding_specs=args.embedding_specs,
+            batchnorm=getattr(args, "batchnorm", False),
+            bn_momentum=getattr(args, "bn_momentum", 0.5),
         )
     if args.model == "ScaleShiftMACE":
         return modules.ScaleShiftMACE(
@@ -246,6 +248,8 @@ def _build_model(
             radial_type=args.radial_type,
             heads=heads,
             embedding_specs=args.embedding_specs,
+            batchnorm=getattr(args, "batchnorm", False),
+            bn_momentum=getattr(args, "bn_momentum", 0.5),
         )
     if args.model == "FoundationMACE":
         return modules.ScaleShiftMACE(**model_config_foundation)

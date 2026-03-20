@@ -1,0 +1,14 @@
+# MACE rMD17 with batch normalization
+model_type: mace_rmd17_bn
+model_class: ScaleShiftMACE
+interaction_type: RealAgnosticResidualInteractionBlock
+num_interactions: 2
+max_ell: 3
+hidden_irreps: "256x0e + 256x1o + 256x2e"
+num_cutoff_basis: 5
+correlation: 3
+r_max: 6.0
+scaling: rms_forces_scaling
+E0s: average
+batchnorm: true
+bn_momentum: 0.5

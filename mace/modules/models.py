@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch
-from e3nn import o3
+from e3nn import nn as e3nn_nn, o3
 from e3nn.util.jit import compile_mode
 
 from mace.modules.embeddings import GenericJointEmbedding
@@ -75,6 +75,8 @@ class MACE(torch.nn.Module):
         oeq_config: Optional[Dict[str, Any]] = None,
         lammps_mliap: Optional[bool] = False,
         readout_cls: Optional[Type[NonLinearReadoutBlock]] = NonLinearReadoutBlock,
+        batchnorm: bool = False,
+        bn_momentum: float = 0.5,
     ):
         super().__init__()
         self.register_buffer(
@@ -260,6 +262,20 @@ class MACE(torch.nn.Module):
                     )
                 )
 
+        # Optional BatchNorm before each interaction block (Shiba-style)
+        self.use_batchnorm = batchnorm
+        self.layer_norms = torch.nn.ModuleList()
+        if batchnorm:
+            # First interaction takes node_feats_irreps (scalars only)
+            self.layer_norms.append(
+                e3nn_nn.BatchNorm(node_feats_irreps, momentum=bn_momentum)
+            )
+            # Subsequent interactions take hidden_irreps
+            for _ in range(1, num_interactions):
+                self.layer_norms.append(
+                    e3nn_nn.BatchNorm(hidden_irreps, momentum=bn_momentum)
+                )
+
     def forward(
         self,
         data: Dict[str, torch.Tensor],
@@ -348,6 +364,8 @@ class MACE(torch.nn.Module):
         for i, (interaction, product) in enumerate(
             zip(self.interactions, self.products)
         ):
+            if self.use_batchnorm:
+                node_feats = self.layer_norms[i](node_feats)
             node_attrs_slice = data["node_attrs"]
             if is_lammps and i > 0:
                 node_attrs_slice = node_attrs_slice[: lammps_natoms[0]]
@@ -525,6 +543,8 @@ class ScaleShiftMACE(MACE):
         for i, (interaction, product) in enumerate(
             zip(self.interactions, self.products)
         ):
+            if self.use_batchnorm:
+                node_feats = self.layer_norms[i](node_feats)
             node_attrs_slice = data["node_attrs"]
             if is_lammps and i > 0:
                 node_attrs_slice = node_attrs_slice[: lammps_natoms[0]]

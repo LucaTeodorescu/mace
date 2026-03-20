@@ -281,6 +281,18 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         choices=["std_scaling", "rms_forces_scaling", "no_scaling"],
     )
     parser.add_argument(
+        "--batchnorm",
+        help="use equivariant batch normalization before each interaction block",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--bn_momentum",
+        help="momentum for batch normalization running statistics",
+        type=float,
+        default=0.5,
+    )
+    parser.add_argument(
         "--avg_num_neighbors",
         help="normalization factor for the message",
         type=float,
