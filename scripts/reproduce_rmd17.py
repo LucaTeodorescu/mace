@@ -232,7 +232,6 @@ def train_molecule(
         f"--device={device}",
         f"--seed={seed}",
         f"--work_dir={out_dir}",
-        "--restart_latest",
     ]
 
     print(f"\n{'='*60}")
