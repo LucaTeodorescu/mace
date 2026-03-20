@@ -4,7 +4,7 @@ defaults:
   - training: rmd17
 
 experiment:
-  name: ${model.model_type}_${data.molecule}_split${data.split}_{wandb.group}
+  name: ${model.model_type}_${data.molecule}_split${data.split}_${wandb.group}
 
 wandb:
   entity: luac-inria
