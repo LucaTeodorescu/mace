@@ -114,11 +114,11 @@ def npz_to_xyz(npz_path: Path, xyz_path: Path, indices: np.ndarray) -> None:
     atoms_list = []
     for i in range(len(coords)):
         atoms = ase.Atoms(numbers=nuclear_charges, positions=coords[i])
-        atoms.info["energy"] = KCAL_MOL_TO_EV * float(energies[i])
+        atoms.info["REF_energy"] = KCAL_MOL_TO_EV * float(energies[i])
         atoms.info["config_type"] = "Default"
         atoms.cell = np.zeros((3, 3))
         atoms.pbc = False
-        atoms.arrays["forces"] = KCAL_MOL_TO_EV * forces[i]
+        atoms.arrays["REF_forces"] = KCAL_MOL_TO_EV * forces[i]
         atoms_list.append(atoms)
 
     ase.io.write(str(xyz_path), atoms_list, format="extxyz")
