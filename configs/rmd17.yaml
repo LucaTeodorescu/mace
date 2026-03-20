@@ -4,11 +4,11 @@ defaults:
   - training: rmd17
 
 experiment:
-  name: rmd17_${data.molecule}_split${data.split}
+  name: ${model.model_type}_${data.molecule}_split${data.split}_{wandb.group}
 
 wandb:
   entity: luac-inria
   project: MACE
   enabled: true
   debug: false
-  group: rmd17
+  group: rmd17_reproduce
