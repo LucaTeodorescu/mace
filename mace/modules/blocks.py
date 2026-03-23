@@ -419,6 +419,10 @@ class _FullyConnectedNetWithDropout(torch.nn.Module):
         for i in range(len(channel_list) - 2):
             self.dropouts.append(torch.nn.Dropout(dropout_p))
 
+    @property
+    def hs(self):
+        return self.fcn.hs
+
     def forward(self, x):
         for i, layer in enumerate(self.fcn):
             x = layer(x)
