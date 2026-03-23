@@ -274,6 +274,8 @@ def train(
                                     "rmse_e_per_atom"
                                 ],
                                 "valid_rmse_f": eval_metrics["rmse_f"],
+                                "valid_mae_e": eval_metrics.get("mae_e"),
+                                "valid_mae_f": eval_metrics.get("mae_f"),
                             }
                 if plotter and epoch % plotter.plot_frequency == 0:
                     try:

@@ -197,6 +197,8 @@ class MinimalMACE_glass(torch.nn.Module):
 
         self.propensity_readouts = torch.nn.ModuleList()
         
+        # TODO: normreadout. (as in eqnet)
+        
         for idtype in range(num_elements):
             self.propensity_readouts.append(LinearReadoutBlock(
             hidden_irreps,
