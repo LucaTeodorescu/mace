@@ -58,6 +58,7 @@ def build_model(model_cfg, device):
         batchnorm=model_cfg.get("batchnorm", False),
         bn_momentum=model_cfg.get("bn_momentum", 0.5),
         dropout_p=model_cfg.get("dropout_p", 0.0),
+        readout_type=model_cfg.get("readout_type", "linear"),
     ).to(device)
 
     return model

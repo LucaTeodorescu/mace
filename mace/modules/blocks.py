@@ -78,6 +78,45 @@ class LinearReadoutBlock(torch.nn.Module):
         return self.linear(x)  # [n_nodes, 1]
 
 
+@compile_mode("script")
+class NormLinearReadoutBlock(torch.nn.Module):
+    """Readout block that computes norms of non-scalar features and applies a
+    standard linear layer on the concatenation of scalars and norms.
+    """
+
+    def __init__(
+        self,
+        irreps_in: o3.Irreps,
+        irrep_out: o3.Irreps = o3.Irreps("0e"),
+    ):
+        super().__init__()
+        # Separate scalar and non-scalar irreps
+        self.num_scalars = sum(mul * (2 * ir.l + 1) for mul, ir in irreps_in if ir.l == 0)
+        irreps_nonscalar = o3.Irreps([(mul, ir) for mul, ir in irreps_in if ir.l != 0])
+
+        self.has_nonscalars = len(irreps_nonscalar) > 0
+        if self.has_nonscalars:
+            self.out_norm = o3.Norm(irreps_nonscalar, squared=False)
+            # Number of norms = number of non-scalar multiplicities
+            num_norms = sum(mul for mul, ir in irreps_nonscalar)
+        else:
+            num_norms = 0
+
+        num_out = sum(mul for mul, ir in irrep_out)
+        self.linear = torch.nn.Linear(self.num_scalars + num_norms, num_out)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        heads: Optional[torch.Tensor] = None,  # pylint: disable=unused-argument
+    ) -> torch.Tensor:
+        if self.has_nonscalars:
+            scalars = x[:, : self.num_scalars]
+            nonscalar_norms = self.out_norm(x[:, self.num_scalars :])
+            x = torch.cat((scalars, nonscalar_norms), dim=-1)
+        return self.linear(x)
+
+
 @simplify_if_compile
 @compile_mode("script")
 class NonLinearReadoutBlock(torch.nn.Module):

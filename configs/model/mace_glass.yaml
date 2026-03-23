@@ -14,3 +14,4 @@ num_outputs: 10
 batchnorm: true
 bn_momentum: 0.5
 dropout_p: 0.0
+readout_type: linear  # "linear" (equivariant o3.Linear) or "norm" (eqnet-style: norm of non-scalars + nn.Linear)

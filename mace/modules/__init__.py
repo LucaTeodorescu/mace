@@ -13,6 +13,7 @@ from .blocks import (
     NonLinearBiasReadoutBlock,
     NonLinearDipoleReadoutBlock,
     NonLinearReadoutBlock,
+    NormLinearReadoutBlock,
     RadialEmbeddingBlock,
     RealAgnosticAttResidualInteractionBlock,
     RealAgnosticDensityInteractionBlock,
@@ -62,6 +63,7 @@ readout_classes: Dict[str, Type[LinearReadoutBlock]] = {
     "NonLinearDipoleReadoutBlock": NonLinearDipoleReadoutBlock,
     "NonLinearReadoutBlock": NonLinearReadoutBlock,
     "NonLinearBiasReadoutBlock": NonLinearBiasReadoutBlock,
+    "NormLinearReadoutBlock": NormLinearReadoutBlock,
 }
 
 scaling_classes: Dict[str, Callable] = {
@@ -89,6 +91,7 @@ __all__ = [
     "NonLinearDipoleReadoutBlock",
     "InteractionBlock",
     "NonLinearReadoutBlock",
+    "NormLinearReadoutBlock",
     "PolynomialCutoff",
     "BesselBasis",
     "GaussianBasis",

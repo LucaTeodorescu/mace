@@ -23,6 +23,7 @@ from .blocks import (
     LinearReadoutBlock,
     NonLinearDipoleReadoutBlock,
     NonLinearReadoutBlock,
+    NormLinearReadoutBlock,
     RadialEmbeddingBlock,
     ScaleShiftBlock,
 )
@@ -81,6 +82,7 @@ class MinimalMACE_glass(torch.nn.Module):
         batchnorm: bool = False,
         bn_momentum: float = 0.5,
         dropout_p: float = 0.0,
+        readout_type: str = "linear",  # "linear" (o3.Linear) or "norm" (eqnet-style norm + nn.Linear)
     ):
         super().__init__()
         
@@ -194,16 +196,20 @@ class MinimalMACE_glass(torch.nn.Module):
                 )
 
         # Readout
-
+        self.readout_type = readout_type
         self.propensity_readouts = torch.nn.ModuleList()
-        
-        # TODO: normreadout. (as in eqnet)
-        
+
         for idtype in range(num_elements):
-            self.propensity_readouts.append(LinearReadoutBlock(
-            hidden_irreps,
-            o3.Irreps(f"{num_outputs}x0e"),  # 10 scalar outputs per node
-            ))
+            if readout_type == "norm":
+                self.propensity_readouts.append(NormLinearReadoutBlock(
+                    hidden_irreps,
+                    o3.Irreps(f"{num_outputs}x0e"),
+                ))
+            else:
+                self.propensity_readouts.append(LinearReadoutBlock(
+                    hidden_irreps,
+                    o3.Irreps(f"{num_outputs}x0e"),
+                ))
             
         
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
