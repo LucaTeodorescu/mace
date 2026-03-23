@@ -348,6 +348,7 @@ def train_one_epoch(
     distributed_model: Optional[DistributedDataParallel] = None,
     rank: Optional[int] = 0,
 ) -> None:
+    model.train()
     model_to_train = model if distributed_model is None else distributed_model
 
     if isinstance(optimizer, LBFGS):
@@ -532,6 +533,7 @@ def evaluate(
     output_args: Dict[str, bool],
     device: torch.device,
 ) -> Tuple[float, Dict[str, Any]]:
+    model.eval()
     for param in model.parameters():
         param.requires_grad = False
 

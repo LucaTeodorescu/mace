@@ -66,6 +66,62 @@ from mace.tools.tables_utils import create_error_table
 from mace.tools.utils import AtomicNumberTable
 
 
+@torch.no_grad()
+def _update_bn(loader, model, device=None):
+    """Recompute BatchNorm running statistics for both PyTorch and e3nn BatchNorm layers.
+
+    torch.optim.swa_utils.update_bn only handles torch.nn._BatchNorm subclasses.
+    e3nn's BatchNorm inherits directly from nn.Module, so we handle it here.
+    """
+    from e3nn.nn import BatchNorm as E3nnBatchNorm
+
+    # Collect e3nn BN modules and save their momenta
+    e3nn_bns = [m for m in model.modules() if isinstance(m, E3nnBatchNorm)]
+    saved_momenta = {m: m.momentum for m in e3nn_bns}
+
+    # Reset running stats
+    for m in e3nn_bns:
+        m.running_mean.zero_()
+        m.running_var.fill_(1.0)
+
+    # Also handle standard PyTorch BN layers
+    pytorch_bns = [
+        m for m in model.modules()
+        if isinstance(m, torch.nn.modules.batchnorm._BatchNorm)
+    ]
+    saved_pytorch_momenta = {m: m.momentum for m in pytorch_bns}
+    for m in pytorch_bns:
+        m.running_mean.zero_()
+        m.running_var.fill_(1.0)
+        m.num_batches_tracked.zero_()
+
+    if not e3nn_bns and not pytorch_bns:
+        return
+
+    was_training = model.training
+    model.train()
+
+    for i, batch in enumerate(loader):
+        # Use cumulative moving average: momentum = 1 / (n + 1)
+        cma_momentum = 1.0 / (i + 1)
+        for m in e3nn_bns:
+            m.momentum = cma_momentum
+        for m in pytorch_bns:
+            m.momentum = cma_momentum
+
+        batch = batch.to(device)
+        batch_dict = batch.to_dict()
+        model(batch_dict, training=True)
+
+    # Restore original momenta
+    for m, mom in saved_momenta.items():
+        m.momentum = mom
+    for m, mom in saved_pytorch_momenta.items():
+        m.momentum = mom
+
+    model.train(was_training)
+
+
 def main() -> None:
     """
     This script runs the training/fine tuning for mace
@@ -870,6 +926,13 @@ def run(args) -> None:
             device=device,
         )
         model.to(device)
+        if swa_eval and any(
+            isinstance(m, torch.nn.modules.batchnorm._BatchNorm)
+            or type(m).__name__ == "BatchNorm"
+            for m in model.modules()
+        ):
+            logging.info("Recomputing BatchNorm statistics for SWA model")
+            _update_bn(train_loader, model, device=device)
         if args.distributed:
             distributed_model = DDP(model, device_ids=[local_rank])
         model_to_evaluate = model if not args.distributed else distributed_model
