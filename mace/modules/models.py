@@ -77,6 +77,7 @@ class MACE(torch.nn.Module):
         readout_cls: Optional[Type[NonLinearReadoutBlock]] = NonLinearReadoutBlock,
         batchnorm: bool = False,
         bn_momentum: float = 0.5,
+        dropout_p: float = 0.0,
     ):
         super().__init__()
         self.register_buffer(
@@ -174,6 +175,7 @@ class MACE(torch.nn.Module):
             radial_MLP=radial_MLP,
             cueq_config=cueq_config,
             oeq_config=oeq_config,
+            dropout_p=dropout_p,
         )
         self.interactions = torch.nn.ModuleList([inter])
 
@@ -226,6 +228,7 @@ class MACE(torch.nn.Module):
                 radial_MLP=radial_MLP,
                 cueq_config=cueq_config,
                 oeq_config=oeq_config,
+                dropout_p=dropout_p,
             )
             self.interactions.append(inter)
             prod = EquivariantProductBasisBlock(

@@ -1,5 +1,5 @@
-# MACE rMD17 with batch normalization
-model_type: mace_rmd17_bn
+# MACE rMD17 with dropout
+model_type: mace_rmd17_dropout
 model_class: ScaleShiftMACE
 interaction_type: RealAgnosticResidualInteractionBlock
 num_interactions: 2
@@ -10,6 +10,4 @@ correlation: 3
 r_max: 6.0
 scaling: rms_forces_scaling
 E0s: average
-batchnorm: true
-bn_momentum: 0.5
-dropout_p: 0.0
+dropout_p: 0.3

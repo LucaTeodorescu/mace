@@ -232,6 +232,7 @@ def _build_model(
             embedding_specs=args.embedding_specs,
             batchnorm=getattr(args, "batchnorm", False),
             bn_momentum=getattr(args, "bn_momentum", 0.5),
+            dropout_p=getattr(args, "dropout_p", 0.0),
         )
     if args.model == "ScaleShiftMACE":
         return modules.ScaleShiftMACE(
@@ -250,6 +251,7 @@ def _build_model(
             embedding_specs=args.embedding_specs,
             batchnorm=getattr(args, "batchnorm", False),
             bn_momentum=getattr(args, "bn_momentum", 0.5),
+            dropout_p=getattr(args, "dropout_p", 0.0),
         )
     if args.model == "FoundationMACE":
         return modules.ScaleShiftMACE(**model_config_foundation)

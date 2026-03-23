@@ -293,6 +293,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         default=0.5,
     )
     parser.add_argument(
+        "--dropout_p",
+        help="dropout probability in radial MLPs (0 = no dropout)",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
         "--avg_num_neighbors",
         help="normalization factor for the message",
         type=float,

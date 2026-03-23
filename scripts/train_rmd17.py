@@ -210,6 +210,11 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
         cmd.append("--batchnorm")
         cmd.append(f"--bn_momentum={model.get('bn_momentum', 0.5)}")
 
+    # Dropout
+    dropout_p = model.get("dropout_p", 0.0)
+    if dropout_p > 0:
+        cmd.append(f"--dropout_p={dropout_p}")
+
     # WandB
     wandb_cfg = cfg.get("wandb", {})
     if wandb_cfg.get("enabled", False):

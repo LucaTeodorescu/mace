@@ -1,0 +1,14 @@
+defaults:
+  - model: mace_rmd17_dropout
+  - data: rmd17
+  - training: rmd17
+
+experiment:
+  name: ${model.model_type}_${data.molecule}_split${data.split}_${wandb.group}
+
+wandb:
+  entity: luac-inria
+  project: MACE
+  enabled: true
+  debug: false
+  group: rmd17_dropout
