@@ -122,7 +122,7 @@ def voigt_to_matrix(t: torch.Tensor):
     )
 
 
-def init_wandb(project: str, entity: str, name: str, config: dict, directory: str):
+def init_wandb(project: str, entity: str, name: str, config: dict, directory: str, group: str = ""):
     import wandb
 
     wandb.init(
@@ -131,6 +131,7 @@ def init_wandb(project: str, entity: str, name: str, config: dict, directory: st
         name=name,
         config=config,
         dir=directory,
+        group=group or None,
         resume="allow",
     )
 

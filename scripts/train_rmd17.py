@@ -155,7 +155,8 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
     training = cfg.training
 
     energy_weight = n_atoms
-    out_dir = os.getcwd()  # Hydra output dir
+    from hydra.core.hydra_config import HydraConfig
+    out_dir = HydraConfig.get().runtime.output_dir
 
     cmd = [
         "mace_run_train",
@@ -224,7 +225,7 @@ def build_mace_command(cfg: DictConfig, train_file: Path, test_file: Path) -> li
         if wandb_cfg.get("project"):
             cmd.append(f"--wandb_project={wandb_cfg.project}")
         if wandb_cfg.get("group"):
-            cmd.append(f"--wandb_project={wandb_cfg.group}")
+            cmd.append(f"--wandb_group={wandb_cfg.group}")
         cmd.append(f"--wandb_name={cfg.experiment.name}")
 
     # Output

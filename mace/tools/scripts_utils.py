@@ -817,6 +817,7 @@ def setup_wandb(args: argparse.Namespace):
         name=args.wandb_name,
         config=wandb_config,
         directory=args.wandb_dir,
+        group=getattr(args, "wandb_group", ""),
     )
     wandb.run.summary["params"] = args_dict_json
 

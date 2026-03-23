@@ -862,6 +862,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         default="",
     )
     parser.add_argument(
+        "--wandb_group",
+        help="Weights and Biases group name",
+        type=str,
+        default="",
+    )
+    parser.add_argument(
         "--wandb_log_hypers",
         help="The hyperparameters to log in Weights and Biases",
         nargs="+",
