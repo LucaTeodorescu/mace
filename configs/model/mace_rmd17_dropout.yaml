@@ -12,4 +12,4 @@ scaling: rms_forces_scaling
 E0s: average
 batchnorm: false
 bn_momentum: none
-dropout_p: 0.3
+dropout_p: 0.1

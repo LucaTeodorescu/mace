@@ -11,5 +11,5 @@ r_max: 6.0
 scaling: rms_forces_scaling
 E0s: average
 batchnorm: true
-bn_momentum: 0.5
+bn_momentum: 0.05
 dropout_p: 0.1
