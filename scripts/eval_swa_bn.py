@@ -30,6 +30,7 @@ from mace.data import KeySpecification, update_keyspec_from_kwargs
 from mace.tools import torch_geometric, utils
 from mace.tools.default_keys import DefaultKeys
 from mace.tools.tables_utils import create_error_table
+from mace.modules.loss import WeightedEnergyForcesLoss
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -93,6 +94,9 @@ def main():
                         help="Training xyz file (for BN stat recomputation)")
     parser.add_argument("--test_file", type=str, required=True,
                         help="Test xyz file for evaluation")
+    parser.add_argument("--energy_weight", type=float, default=9.0,
+                        help="Energy weight for loss (default: 9 = ethanol num_atoms)")
+    parser.add_argument("--forces_weight", type=float, default=1000.0)
     parser.add_argument("--batch_size", type=int, default=5)
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
@@ -158,7 +162,9 @@ def main():
         table_type="TotalMAE",
         all_data_loaders={"Default_Default": test_loader},
         model=model,
-        loss_fn=None,
+        loss_fn=WeightedEnergyForcesLoss(
+            energy_weight=args.energy_weight, forces_weight=args.forces_weight,
+        ),
         output_args={
             "energy": True,
             "forces": True,
