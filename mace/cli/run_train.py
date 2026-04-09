@@ -111,7 +111,7 @@ def _update_bn(loader, model, device=None):
 
         batch = batch.to(device)
         batch_dict = batch.to_dict()
-        model(batch_dict, training=True)
+        model(batch_dict, training=True, compute_force=False)
 
     # Restore original momenta
     for m, mom in saved_momenta.items():
